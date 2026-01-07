@@ -130,5 +130,85 @@ def complete():
     db_write("DELETE FROM todos WHERE user_id=%s AND id=%s", (current_user.id, todo_id,))
     return redirect(url_for("index"))
 
+@app.route("/dbexplorer", methods=["GET", "POST"])
+@login_required
+def dbexplorer():
+    # Alle Tabellennamen holen
+    tables_raw = db_read("SHOW TABLES")
+    all_tables = [next(iter(row.values())) for row in tables_raw]  # erste Spalte jedes Dicts
+
+    selected_tables = []
+    limit = 50  # Default
+    results = {}
+
+    if request.method == "POST":
+        # Gewählte Tabellen einsammeln
+        selected_tables = request.form.getlist("tables")
+
+        # Limit aus Formular lesen
+        limit_str = request.form.get("limit") or ""
+        try:
+            limit = int(limit_str)
+        except ValueError:
+            limit = 50
+
+        # Limit ein bisschen absichern
+        if limit < 1:
+            limit = 1
+        elif limit > 1000:
+            limit = 1000
+
+        allowed = set(all_tables)
+
+        # Pro gewählter Tabelle Daten abfragen
+        for table in selected_tables:
+            if table in allowed:  # einfache Absicherung gegen SQL-Injection
+                rows = db_read(f"SELECT * FROM `{table}` LIMIT %s", (limit,))
+                results[table] = rows
+
+    return render_template(
+        "dbexplorer.html",
+        all_tables=all_tables,
+        selected_tables=selected_tables,
+        results=results,
+        limit=limit,
+    )
+
+# --- add somewhere with your other routes ---
+
+@app.route("/db-visualization", methods=["GET"])
+@login_required  # remove if you want it public
+def db_visualization():
+    # Schema per TODOS.sql: todos.user_id -> users.id
+    users = db_read("SELECT id, username FROM users ORDER BY id")
+    todos = db_read("SELECT id, user_id, content, due FROM todos ORDER BY user_id, id")
+
+    # Build a Hierarchical Edge Bundling dataset:
+    # [{ name: "db.users.user_1", imports: ["db.todos.todo_7", ...] }, ...]
+    # We'll do: todo -> user (because todo row contains FK user_id)
+    graph_data = []
+
+    # user leaf nodes
+    for u in users:
+        graph_data.append({
+            "name": f"db.users.user_{u['id']}",
+            "label": u["username"],
+            "type": "user",
+            "imports": []
+        })
+
+    # todo leaf nodes + FK edges (todo imports its referenced user)
+    for t in todos:
+        label = (t.get("content") or "").strip() or f"todo #{t['id']}"
+        graph_data.append({
+            "name": f"db.todos.todo_{t['id']}",
+            "label": label,
+            "type": "todo",
+            "imports": [f"db.users.user_{t['user_id']}"]  # FK edge
+        })
+
+    return render_template("db_visualization.html", graph_data=graph_data)
+
+
 if __name__ == "__main__":
     app.run()

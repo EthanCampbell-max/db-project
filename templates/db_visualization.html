@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>DB Visualization (Users ↔ Todos)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #0b0d12; color: #e9eefc; }
+    header { padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; gap: 14px; align-items: baseline; }
+    header h1 { margin: 0; font-size: 16px; font-weight: 650; }
+    header .hint { opacity: .75; font-size: 13px; }
+    .wrap { display: grid; grid-template-columns: 1fr; }
+    .panel { padding: 10px 14px 16px; }
+    .legend { display: flex; gap: 12px; align-items: center; font-size: 13px; opacity: .9; flex-wrap: wrap; }
+    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; margin-right: 6px; }
+    .dot.user { background: #7dd3fc; }
+    .dot.todo { background: #a7f3d0; }
+    svg { width: 100%; height: calc(100vh - 92px); display: block; }
+
+    /* Links + hover styling */
+    .link { stroke: rgba(255,255,255,.14); stroke-width: 1.15; fill: none; }
+    .link.link--active { stroke: rgba(255,255,255,.85); stroke-width: 2.0; }
+
+    .node text { font-size: 11px; fill: rgba(233,238,252,.78); cursor: default; user-select: none; }
+    .node.user text { fill: rgba(125,211,252,.92); }
+    .node.todo text { fill: rgba(167,243,208,.92); }
+
+    .node.node--active text { fill: #ffffff; font-weight: 700; }
+
+    .tooltip {
+      position: fixed; pointer-events: none;
+      background: rgba(15,18,25,.92);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 8px 10px; border-radius: 10px;
+      font-size: 12px; line-height: 1.2;
+      transform: translate(-50%, -120%);
+      opacity: 0; transition: opacity .08s ease;
+      max-width: min(360px, 80vw);
+      box-shadow: 0 12px 40px rgba(0,0,0,.35);
+    }
+    .tooltip strong { display: block; margin-bottom: 2px; }
+    .tooltip .meta { opacity: .75; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Database graph (bundled hierarchy)</h1>
+    <div class="hint">Hover a leaf to highlight foreign-key connections (todo → user).</div>
+  </header>
+
+  <div class="panel">
+    <div class="legend">
+      <span><span class="dot user"></span>User</span>
+      <span><span class="dot todo"></span>Todo</span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <svg id="viz" role="img" aria-label="Hierarchical edge bundling visualization"></svg>
+  </div>
+
+  <div id="tooltip" class="tooltip"></div>
+
+  <!-- D3 (CDN) -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    // Data injected by Flask
+    const classes = {{ graph_data | tojson }};
+
+    // --- Helpers (classic hierarchical edge bundling utilities) ---
+    function packageHierarchy(classes) {
+      const map = new Map();
+
+      function find(name, data) {
+        let node = map.get(name);
+        if (!node) {
+          node = data || { name, children: [] };
+          map.set(name, node);
+          if (name.length) {
+            const i = name.lastIndexOf(".");
+            const parentName = name.substring(0, i);
+            node.parent = find(parentName);
+            node.parent.children.push(node);
+            node.key = name.substring(i + 1);
+          }
+        }
+        return node;
+      }
+
+      for (const d of classes) find(d.name, d);
+      return map.get("");
+    }
+
+    function buildLinks(leaves) {
+      const byName = new Map(leaves.map(d => [d.data.name, d]));
+      const links = [];
+      for (const d of leaves) {
+        const imports = d.data.imports || [];
+        for (const targetName of imports) {
+          const target = byName.get(targetName);
+          if (target) links.push({ source: d, target });
+        }
+      }
+      // attach adjacency for fast hover highlighting
+      for (const d of leaves) { d.incoming = []; d.outgoing = []; }
+      for (const l of links) { l.source.outgoing.push(l); l.target.incoming.push(l); }
+      return links;
+    }
+
+    // --- Build hierarchy + layout ---
+    const width = 980;
+    const radius = width / 2;
+
+    const svg = d3.select("#viz")
+      .attr("viewBox", [-width / 2, -width / 2, width, width]);
+
+    const root = d3.hierarchy(packageHierarchy(classes), d => d.children)
+      .sum(d => d.children ? 0 : 1);
+
+    d3.cluster().size([2 * Math.PI, radius - 120])(root);
+
+    const leaves = root.leaves();
+    const links = buildLinks(leaves);
+
+    const line = d3.lineRadial()
+      .curve(d3.curveBundle.beta(0.85))
+      .radius(d => d.y)
+      .angle(d => d.x);
+
+    // --- Draw links (bundled paths via source.path(target)) ---
+    const link = svg.append("g")
+      .attr("aria-hidden", "true")
+      .selectAll("path")
+      .data(links)
+      .join("path")
+      .attr("class", "link")
+      .attr("d", d => line(d.source.path(d.target)));
+
+    // --- Draw nodes (leaf labels) ---
+    const node = svg.append("g")
+      .selectAll("g")
+      .data(leaves)
+      .join("g")
+      .attr("class", d => `node ${d.data.type || ""}`)
+      .attr("transform", d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${d.y},0)`);
+
+    node.append("text")
+      .attr("dy", "0.31em")
+      .attr("x", d => d.x < Math.PI ? 6 : -6)
+      .attr("text-anchor", d => d.x < Math.PI ? "start" : "end")
+      .attr("transform", d => d.x >= Math.PI ? "rotate(180)" : null)
+      .text(d => d.data.label ?? d.data.key ?? d.data.name)
+      .on("mousemove", (event, d) => showTooltip(event, d))
+      .on("mouseleave", hideTooltip)
+      .on("mouseenter", (event, d) => activate(d))
+      .on("mouseleave", (event, d) => deactivate());
+
+    // --- Tooltip ---
+    const tip = document.getElementById("tooltip");
+    function showTooltip(event, d) {
+      const label = d.data.label ?? d.data.key ?? d.data.name;
+      const type = d.data.type || "node";
+      tip.innerHTML = `<strong>${escapeHtml(label)}</strong><div class="meta">${escapeHtml(type)} • ${escapeHtml(d.data.name)}</div>`;
+      tip.style.left = event.clientX + "px";
+      tip.style.top = event.clientY + "px";
+      tip.style.opacity = 1;
+    }
+    function hideTooltip() { tip.style.opacity = 0; }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // --- Hover highlighting ---
+    function activate(d) {
+      const activeLinks = new Set([...d.incoming, ...d.outgoing]);
+
+      link.classed("link--active", l => activeLinks.has(l));
+
+      node.classed("node--active", n => {
+        if (n === d) return true;
+        // active if connected by any highlighted link
+        return activeLinks.has({source:n,target:d}) || activeLinks.has({source:d,target:n}) ||
+               d.incoming.some(l => l.source === n) || d.outgoing.some(l => l.target === n);
+      });
+
+      // raise active links above others
+      link.filter(l => activeLinks.has(l)).raise();
+    }
+
+    function deactivate() {
+      link.classed("link--active", false);
+      node.classed("node--active", false);
+    }
+  </script>
+</body>
+</html>
