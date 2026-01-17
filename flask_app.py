@@ -175,6 +175,71 @@ def dbexplorer():
     )
 
 # --- add somewhere with your other routes ---
+@app.route("/newroom", methods=["GET", "POST"])
+@login_required
+def newroom():
+    # Raumtypen für Auswahl
+    room_types = db_read(
+        "SELECT raumtyp_id, bezeichnung FROM Raumtyp ORDER BY bezeichnung"
+    )
+
+    message = None
+
+    if request.method == "POST":
+        zimmernummer = request.form.get("zimmernummer")
+        kapazitaet = request.form.get("kapazitaet") or None
+        raumtyp_id = request.form.get("raumtyp_id") or None
+
+        # prüfen ob Zimmer existiert
+        existing = db_read(
+            "SELECT zimmer_id FROM Zimmer WHERE zimmernummer = %s",
+            (zimmernummer,),
+            single=True
+        )
+
+        if existing:
+            # Alternative Ablauf: Update
+            db_write(
+                """
+                UPDATE Zimmer
+                SET
+                    kapazitaet = COALESCE(%s, kapazitaet),
+                    raumtyp_id = COALESCE(%s, raumtyp_id)
+                WHERE zimmernummer = %s
+                """,
+                (kapazitaet, raumtyp_id, zimmernummer)
+            )
+            message = "Zimmer existierte bereits – Daten wurden aktualisiert."
+        else:
+            # Normalablauf: neues Zimmer
+            db_write(
+                """
+                INSERT INTO Zimmer (zimmernummer, kapazitaet, raumtyp_id, stockwerk)
+                VALUES (%s, %s, %s, 0)
+                """,
+                (zimmernummer, kapazitaet, raumtyp_id)
+            )
+            message = "Neues Zimmer wurde erfolgreich angelegt."
+
+    # Übersicht aller Zimmer
+    rooms = db_read(
+        """
+        SELECT
+            z.zimmernummer,
+            z.kapazitaet,
+            r.bezeichnung AS raumtyp
+        FROM Zimmer z
+        LEFT JOIN Raumtyp r ON z.raumtyp_id = r.raumtyp_id
+        ORDER BY z.zimmernummer
+        """
+    )
+
+    return render_template(
+        "newroom.html",
+        room_types=room_types,
+        rooms=rooms,
+        message=message
+    )
 
 @app.route("/db-visualization", methods=["GET"])
 @login_required  # remove if you want it public
