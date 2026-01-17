@@ -407,7 +407,7 @@ def logout():
     return render_template("logout.html")  # Show confirmation page
 
 
->>>>>>> 9dd98466e597f4fd72e98e97f786c13f1190b00c
+
 @app.route("/db-visualization", methods=["GET"])
 @login_required  # remove if you want it public
 
@@ -448,7 +448,7 @@ def db_visualization():
 
 from flask import Flask, request
 
-app = Flask(__name__)
+
 
 # <<< PUT YOUR WEBHOOK ROUTE HERE >>>
 @app.route("/webhook", methods=["POST"])
@@ -461,7 +461,6 @@ if __name__ == "__main__":
 
 
 
-if __name__ == "__main__":
-    app.run()
+
 
 
