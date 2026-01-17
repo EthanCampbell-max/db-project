@@ -394,6 +394,27 @@ def registration():
     return render_template("registration.html")
 
 
+from flask_login import logout_user, login_required
+from flask import render_template
+
+@app.route("/logout", methods=["GET"])
+@login_required
+def logout():
+    """
+    Use Case: Benutzer abmelden
+    Kurzbeschreibung: Der Nutzer meldet sich vom System ab
+    Beteiligte Akteure: Gast oder Mitarbeiter
+    Auslöser: Der Nutzer möchte die Sitzung beenden
+    Vorbedingungen: Nutzer ist angemeldet
+    Normalablauf: Nutzer klickt auf “Logout”, System beendet die Sitzung
+    Alternative Abläufe: -
+    Ergebnis: Nutzer ist abgemeldet
+    Bemerkungen: -
+    """
+    logout_user()  # Ends the session
+    return render_template("logout.html")  # Show confirmation page
+
+
 @app.route("/db-visualization", methods=["GET"])
 @login_required  # remove if you want it public
 
