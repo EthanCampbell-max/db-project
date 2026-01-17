@@ -367,6 +367,32 @@ def cancelation():
         message=message
     )
 
+@app.route("/registration", methods=["GET", "POST"])
+def registration():
+    from flask_login import UserMixin, login_user
+
+    # Dummy-User für Flask-Login
+    class DummyUser(UserMixin):
+        def __init__(self, id, role):
+            self.id = id
+            self.role = role
+
+    if request.method == "POST":
+        role = request.form.get("role")  # "gast" oder "mitarbeiter"
+        username = request.form.get("username")  # beliebig
+        password = request.form.get("password")  # beliebig
+
+        # IDs passend zu deiner Datenbank (1 = Gast, 2 = Mitarbeiter)
+        user_id = 1 if role == "gast" else 2
+
+        # Immer erfolgreich anmelden
+        user = DummyUser(id=user_id, role=role)
+        login_user(user)
+
+        return redirect(url_for("index"))
+
+    return render_template("registration.html")
+
 
 @app.route("/db-visualization", methods=["GET"])
 @login_required  # remove if you want it public
