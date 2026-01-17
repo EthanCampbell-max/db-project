@@ -100,14 +100,6 @@ def register():
         footer_link_label="Einloggen"
     )
 
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for("index"))
-
-
-
 # App routes
 @app.route("/", methods=["GET", "POST"])
 @login_required
