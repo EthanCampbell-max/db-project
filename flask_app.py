@@ -311,6 +311,62 @@ def booking():
         message=message
     )
 
+from datetime import date
+
+@app.route("/cancelation", methods=["GET", "POST"])
+@login_required
+def cancelation():
+    message = None
+
+    # POST → Buchung stornieren
+    if request.method == "POST":
+        booking_id = request.form.get("booking_id")
+
+        # Prüfen: gehört die Buchung dem User & liegt in der Zukunft
+        booking = db_read(
+            """
+            SELECT startdatum
+            FROM Buchung
+            WHERE buchung_id = %s AND nutzer_id = %s
+            """,
+            (booking_id, current_user.id),
+            single=True
+        )
+
+        if not booking:
+            message = "Zugriff verweigert."
+        elif booking["startdatum"] < date.today():
+            message = "Vergangene Buchungen können nicht storniert werden."
+        else:
+            db_write(
+                "DELETE FROM Buchung WHERE buchung_id = %s",
+                (booking_id,)
+            )
+            message = "Buchung wurde erfolgreich storniert."
+
+    # GET → Buchungen anzeigen
+    bookings = db_read(
+        """
+        SELECT
+            b.buchung_id,
+            z.zimmernummer,
+            b.startdatum,
+            b.enddatum
+        FROM Buchung b
+        JOIN Zimmer z ON b.zimmer_id = z.zimmer_id
+        WHERE b.nutzer_id = %s
+        ORDER BY b.startdatum
+        """,
+        (current_user.id,)
+    )
+
+    return render_template(
+        "cancelation.html",
+        bookings=bookings,
+        today=date.today(),
+        message=message
+    )
+
 
 @app.route("/db-visualization", methods=["GET"])
 @login_required  # remove if you want it public
