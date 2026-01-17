@@ -407,6 +407,7 @@ def logout():
     return render_template("logout.html")  # Show confirmation page
 
 
+>>>>>>> 9dd98466e597f4fd72e98e97f786c13f1190b00c
 @app.route("/db-visualization", methods=["GET"])
 @login_required  # remove if you want it public
 
@@ -442,5 +443,25 @@ def db_visualization():
     return render_template("db_visualization.html", graph_data=graph_data)
 
 
+    
+
+
+from flask import Flask, request
+
+app = Flask(__name__)
+
+# <<< PUT YOUR WEBHOOK ROUTE HERE >>>
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    return "OK", 200
+
+if __name__ == "__main__":
+    app.run(debug=True)  # optional for local testing, PythonAnywhere ignores this
+
+
+
+
 if __name__ == "__main__":
     app.run()
+
+
