@@ -443,14 +443,6 @@ def db_visualization():
     return render_template("db_visualization.html", graph_data=graph_data)
 
 
-    
-
-
-from flask import Flask, request
-
-
-
-# <<< PUT YOUR WEBHOOK ROUTE HERE >>>
 @app.route("/webhook", methods=["POST"])
 def webhook():
     return "OK", 200
