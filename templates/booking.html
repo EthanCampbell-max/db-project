@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Zimmer buchen</h2>
+
+{% if message %}
+  <div class="alert alert-info">{{ message }}</div>
+{% endif %}
+
+<div class="todo-form">
+  <form method="POST">
+
+    <div class="form-group">
+      <label>Zimmer auswählen</label>
+      <select name="zimmer_id" class="form-control" required>
+        {% for r in rooms %}
+          <option value="{{ r.zimmer_id }}">
+            Zimmer {{ r.zimmernummer }} – {{ r.raumtyp }} ({{ r.kapazitaet }} Pers.)
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Startdatum</label>
+      <input type="date"
+             name="startdatum"
+             class="form-control"
+             required>
+    </div>
+
+    <div class="form-group">
+      <label>Enddatum</label>
+      <input type="date"
+             name="enddatum"
+             class="form-control"
+             required>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+      Buchung bestätigen
+    </button>
+
+  </form>
+</div>
+
+<hr>
+
+<h3>Meine Buchungen</h3>
+
+<ul class="todo-list">
+  {% for b in bookings %}
+    <li class="todo-item">
+      <div class="todo-content">
+        <strong>Zimmer {{ b.zimmernummer }}</strong><br>
+        📅 {{ b.startdatum }} – {{ b.enddatum }}
+      </div>
+    </li>
+  {% else %}
+    <div>Noch keine Buchungen vorhanden.</div>
+  {% endfor %}
+</ul>
+
+{% endblock %}
