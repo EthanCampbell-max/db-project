@@ -443,10 +443,6 @@ def db_visualization():
     return render_template("db_visualization.html", graph_data=graph_data)
 
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    return "OK", 200
-
 if __name__ == "__main__":
     app.run(debug=True)  # optional for local testing, PythonAnywhere ignores this
 
