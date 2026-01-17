@@ -1,6 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<!-- NAVIGATION BUTTONS FOR USE CASES -->
+<nav style="padding: 10px; background-color: #f2f2f2; text-align: center;">
+  <a href="/" style="margin: 10px;">🏠 Home</a>
+  <a href="/booking" style="margin: 10px;">📅 Zimmer buchen</a>
+  <a href="/cancelation" style="margin: 10px;">❌ Buchung stornieren</a>
+
+  {% if current_user.role == "mitarbeiter" %}
+    <a href="/newroom" style="margin: 10px;">➕ Neues Zimmer</a>
+  {% endif %}
+
+  <a href="/dbexplorer" style="margin: 10px;">🗄️ DB-Explorer</a>
+  <a href="/logout" style="margin: 10px;">🚪 Logout</a>
+</nav>
+
+<hr>
+
     <ul class="todo-list">
           {% for todo in todos %}
             <li class="todo-item">
