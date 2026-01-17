@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="text-align: center; margin-top: 2rem;">
+  <h2>Sie wurden erfolgreich abgemeldet ✅</h2>
+  <p>Die Sitzung wurde beendet. Sie können sich jederzeit wieder einloggen.</p>
+  <a href="{{ url_for('registration') }}" class="btn btn-primary">Zur Login-Seite</a>
+</div>
+{% endblock %}
