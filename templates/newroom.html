@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Zimmer erfassen</h2>
+
+{% if message %}
+  <div class="alert alert-info">{{ message }}</div>
+{% endif %}
+
+<div class="todo-form">
+  <form method="POST">
+
+    <div class="form-group">
+      <label>Zimmernummer</label>
+      <input type="text"
+             name="zimmernummer"
+             class="form-control"
+             placeholder="z. B. 101"
+             required>
+    </div>
+
+    <div class="form-group">
+      <label>Kapazität</label>
+      <input type="number"
+             name="kapazitaet"
+             class="form-control"
+             min="1"
+             placeholder="z. B. 2">
+    </div>
+
+    <div class="form-group">
+      <label>Raumtyp</label>
+      <select name="raumtyp_id" class="form-control">
+        <option value="">– nicht festgelegt –</option>
+        {% for r in room_types %}
+          <option value="{{ r.raumtyp_id }}">
+            {{ r.bezeichnung }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+      Zimmer speichern
+    </button>
+
+  </form>
+</div>
+
+<hr>
+
+<h3>Alle Zimmer</h3>
+
+<ul class="todo-list">
+  {% for z in rooms %}
+    <li class="todo-item">
+      <div class="todo-content">
+        <strong>Zimmer {{ z.zimmernummer }}</strong><br>
+        Kapazität: {{ z.kapazitaet or "—" }}<br>
+        Typ: {{ z.raumtyp or "—" }}
+      </div>
+    </li>
+  {% else %}
+    <div>Noch keine Zimmer erfasst.</div>
+  {% endfor %}
+</ul>
+
+{% endblock %}
