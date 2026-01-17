@@ -241,8 +241,80 @@ def newroom():
         message=message
     )
 
+
+@app.route("/booking", methods=["GET", "POST"])
+@login_required
+def booking():
+    message = None
+
+    # Alle Zimmer anzeigen
+    rooms = db_read(
+        """
+        SELECT
+            z.zimmer_id,
+            z.zimmernummer,
+            z.kapazitaet,
+            r.bezeichnung AS raumtyp
+        FROM Zimmer z
+        JOIN Raumtyp r ON z.raumtyp_id = r.raumtyp_id
+        ORDER BY z.zimmernummer
+        """
+    )
+
+    if request.method == "POST":
+        zimmer_id = request.form.get("zimmer_id")
+        startdatum = request.form.get("startdatum")
+        enddatum = request.form.get("enddatum")
+
+        # prüfen ob Zimmer im Zeitraum belegt ist
+        conflict = db_read(
+            """
+            SELECT buchung_id FROM Buchung
+            WHERE zimmer_id = %s
+              AND NOT (enddatum < %s OR startdatum > %s)
+            """,
+            (zimmer_id, startdatum, enddatum),
+            single=True
+        )
+
+        if conflict:
+            message = "❌ Dieses Zimmer ist im gewählten Zeitraum bereits gebucht."
+        else:
+            db_write(
+                """
+                INSERT INTO Buchung (startdatum, enddatum, zimmer_id, nutzer_id)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (startdatum, enddatum, zimmer_id, current_user.id)
+            )
+            message = "✅ Buchung erfolgreich gespeichert."
+
+    # Buchungen des aktuellen Gasts anzeigen
+    bookings = db_read(
+        """
+        SELECT
+            b.startdatum,
+            b.enddatum,
+            z.zimmernummer
+        FROM Buchung b
+        JOIN Zimmer z ON b.zimmer_id = z.zimmer_id
+        WHERE b.nutzer_id = %s
+        ORDER BY b.startdatum
+        """,
+        (current_user.id,)
+    )
+
+    return render_template(
+        "booking.html",
+        rooms=rooms,
+        bookings=bookings,
+        message=message
+    )
+
+
 @app.route("/db-visualization", methods=["GET"])
 @login_required  # remove if you want it public
+
 def db_visualization():
     # Schema per TODOS.sql: todos.user_id -> users.id
     users = db_read("SELECT id, username FROM users ORDER BY id")
